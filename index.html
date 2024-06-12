@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tableau Embed</title>
+    <style>
+      html, body, tableau-viz, tableau-authoring-viz {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <tableau-viz
+      src="https://prod-apsoutheast-a.online.tableau.com/t/waizlytechnology/views/ProblemTrackerforITStaff/ProblemTracker"
+      device="desktop"
+      hide-tabs
+      toolbar="bottom"
+    >
+    </tableau-viz>
+    <script type="module">
+      import { SheetType, TableauEventType } from 'https://prod-apsoutheast-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.js';
+      import { generateJwt } from './index.js';
+
+      (async () => {
+        // Get the viz object from the HTML web component
+        const viz = document.querySelector('tableau-viz, tableau-authoring-viz');
+
+        async function refreshToken() {
+          const newToken = await generateJwt(); 
+          viz.token = newToken; 
+        }
+
+        // Wait for the viz to become interactive
+        await new Promise((resolve, reject) => {
+          // Add an event listener to verify the viz becomes interactive
+          viz.addEventListener(TableauEventType.FirstInteractive, () => {
+            console.log('Viz is interactive!');
+            resolve();
+          });
+
+          viz.addEventListener(TableauEventType.VizLoadError, (error) => {
+            const message = JSON.parse(error.detail.message);
+            const errorMessage = JSON.parse(message.errorMessage);
+
+            const displayMessage = `ca-error-${errorMessage.result.errors[0].code}`;
+            reject(displayMessage);
+          });
+        });
+
+        let dashboard;
+        let worksheet;
+
+        if (viz.workbook.activeSheet.sheetType === SheetType.Dashboard) {
+          dashboard = viz.workbook.activeSheet;
+
+          // Provide the name of the worksheet you want to use from the dashboard
+          worksheet = dashboard.worksheets.find((ws) => ws.name === 'Replace-Name-of-Worksheet');
+        } else {
+          // Active sheet is already a worksheet
+          worksheet = viz.workbook.activeSheet;
+        }
+
+        // Refresh the token every 10 minutes
+        setInterval(refreshToken(), 10 * 60 * 1000);
+
+      })();
+    </script>  
+  </body>
+</html>
